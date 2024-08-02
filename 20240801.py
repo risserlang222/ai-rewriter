@@ -3,7 +3,8 @@
 # pyannoteはwavしか動作しないかもしれない。copilotによると、wavしか対応していない。
 # TODO:変換所要時間を出せるとよい
 # TODO:変換対象ファイルの有無を発見したい
-# TODO:ffmpegで変換してモノラルwavを作るには？？？
+# TODO:ffmpegで変換してモノラルwavを作るには？？？しかし、ここで作ると、処理時間が長くなる。
+
 
 # ライブラリの読み込み
 import whisper
@@ -16,6 +17,8 @@ from pydub import AudioSegment
 from pydub.silence import split_on_silence
 
 import tempfile
+
+import subprocess
 
 # whisperモデルの設定
 model = whisper.load_model("medium")
@@ -48,11 +51,31 @@ def remove_silence(input_path, output_path):
     org_ms = len(no_silence_audio)
     print('removed: {:.2f} [min]'.format(org_ms/60/1000))
  
-
-
+def get_source_file_channels(input_path):
+    try:
+        # ffprobeを実行して音声ファイルの情報を取得
+        cmd = ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=channels", "-of", "default=noprint_wrappers=1:nokey=1", input_path]
+        result = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
+        num_channels = int(result.strip())
+        return num_channels
+    except subprocess.CalledProcessError:
+        print("エラー: ffprobeの実行中に問題が発生しました")
+        return None
 
 # 入力音声ファイルのパス
 source_file = "audio_mono.wav"
+
+channels = get_source_file_channels(source_file)
+
+if channels == 2:
+    print("チャンネル数が2です。話者識別は、チャンネル数2は非対応です。")
+    exit
+elif channels == 1:
+    print("チャンネル数が1です。処理を継続します。")
+else:
+    print("チャンネル数が想定外の値です。")
+    exit
+
 
 # 無音部分を除去した音声を保存するための一時ファイルを作成
 no_silence_audio_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
