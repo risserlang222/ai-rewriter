@@ -25,15 +25,7 @@ pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", use_auth
 # 明示的でないと、cudaを使用できないとノウハウあり。　https://qiita.com/daiki7010/items/c26c0818997229767d2f
 pipeline.to(torch.device("cuda"))
 
-# 変換ファイルの設定
-#audio_file = "0511-0520.wav" # OK
-# audio_file = "daihyousya.wav" # NG
-# audio_file = "219.wav" #NG
 
-# audio_file = "/home/keisou/pyannote/audio.wav" #NG
-#audio_file = "daihyosya.wav" # OK
-
-#audio_file = "T094201a.wav" # OK
 
 def remove_silence(input_path, output_path):
     # 音声ファイルの読み込み
