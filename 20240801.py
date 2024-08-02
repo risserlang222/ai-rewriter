@@ -64,6 +64,9 @@ def get_source_file_channels(input_path):
 
 # 入力音声ファイルのパス
 source_file = "audio_mono.wav"
+if not os.path.exists(source_file):
+    print("エラー：{source_file}が見つかりません。終了します。")
+    exit(1)
 
 channels = get_source_file_channels(source_file)
 
