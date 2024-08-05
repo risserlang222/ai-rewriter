@@ -20,6 +20,9 @@ import tempfile
 
 import subprocess
 
+import logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # whisperモデルの設定
 model = whisper.load_model("medium")
  
@@ -62,17 +65,36 @@ def get_source_file_channels(input_path):
         print("エラー: ffprobeの実行中に問題が発生しました")
         return None
 
-# 入力音声ファイルのパス
-source_file = "audio_mono.wav"
+def convert_source_to_mono(source_file, source_file_mono):
+    try:
+        #\ユーザに確認を求める
+        user_input = input("ファイルをモノラルに変換します。よろしいですか？（y/n):")
+        if user_input.lower() != "y":
+            print("キャンセルしました。")
+            exit
+        # ffmpegを実行して2チャンネルから1チャンネルに変換
+
+        cmd = ["ffmpeg", "-i", source_file, "-ac", "1", source_file_mono]
+        subprocess.run(cmd, check=True)
+        print(f"{source_file} をモノラルに変換して {source_file_mono} に保存しました。")
+    except subprocess.CalledProcessError:
+        print("エラー: ffmpegの実行中に問題が発生しました")
+
+# 入力音声ファイルのパス。ここは大林さんのGUIでエラーハンドリングすればOK
+source_file = "240801_1257.mp3"
 if not os.path.exists(source_file):
     print("エラー：{source_file}が見つかりません。終了します。")
     exit(1)
+#TODO:wavにする必要ある？mp3のほうがよいか？
+source_file_mono = "mono.wav"
+
 
 channels = get_source_file_channels(source_file)
 
 if channels == 2:
     print("チャンネル数が2です。話者識別は、チャンネル数2は非対応です。")
-    exit
+    convert_source_to_mono(source_file,source_file_mono)
+    
 elif channels == 1:
     print("チャンネル数が1です。処理を継続します。")
 else:
@@ -83,13 +105,21 @@ else:
 # 無音部分を除去した音声を保存するための一時ファイルを作成
 no_silence_audio_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
 # 無音部分を除去
-remove_silence(source_file, no_silence_audio_file.name)
+logging.debug('無音部分除去処理開始')
 
-diarization = pipeline(no_silence_audio_file.name ,num_speakers=2)
+remove_silence(source_file_mono, no_silence_audio_file.name)
 
+#TODO:デバッグが必要。num_spekersが2かどうかは不明。
+#TODO:pipelineの進捗出せないか？フリーズしているのか、進んでいるのか、表示したい。
+logging.debug('パイプライン処理開始')
+#diarization = pipeline(no_silence_audio_file.name ,num_speakers=2)
+diarization = pipeline(no_silence_audio_file.name)
 
+logging.debug('オーディオ処理開始')
 
 audio = Audio(sample_rate=16000, mono=True)
+
+logging.debug('話者セグメント切り出し開始')
 
 for segment, _, speaker in diarization.itertracks(yield_label=True):
     # 音声ファイルから話者のセグメントを切り出す
