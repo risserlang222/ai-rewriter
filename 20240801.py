@@ -94,7 +94,7 @@ if not os.path.exists(source_file):
 source_file_mono = "mono.wav"
 if os.path.exists(source_file_mono):
     #\ユーザに確認を求める
-    user_input = input("mono.wavを削除します。よろしいですか？（y/n):")
+    user_input = input("すでに存在するmono.wavを削除します。よろしいですか？（y/n):")
     if user_input.lower() != "y":
         print("キャンセルしました。")
         exit
