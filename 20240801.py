@@ -23,6 +23,9 @@ import subprocess
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+from tqdm import tqdm
+
+
 # whisperモデルの設定
 model = whisper.load_model("medium")
  
@@ -81,12 +84,23 @@ def convert_source_to_mono(source_file, source_file_mono):
         print("エラー: ffmpegの実行中に問題が発生しました")
 
 # 入力音声ファイルのパス。ここは大林さんのGUIでエラーハンドリングすればOK
-source_file = "240801_1257.mp3"
+source_file = "audio_mono.wav"
 if not os.path.exists(source_file):
     print("エラー：{source_file}が見つかりません。終了します。")
     exit(1)
+
 #TODO:wavにする必要ある？mp3のほうがよいか？
+#TODO:既にmono.wavがあれば削除してしまうが、正しいか？
 source_file_mono = "mono.wav"
+if os.path.exists(source_file_mono):
+    #\ユーザに確認を求める
+    user_input = input("mono.wavを削除します。よろしいですか？（y/n):")
+    if user_input.lower() != "y":
+        print("キャンセルしました。")
+        exit
+    # mono.wavを削除する
+    os.remove(os.path.join(os.getcwd(), source_file_mono))
+    print(f"{source_file_mono} を削除しました。")
 
 
 channels = get_source_file_channels(source_file)
@@ -107,14 +121,22 @@ no_silence_audio_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
 # 無音部分を除去
 logging.debug('無音部分除去処理開始')
 
+# もしsource_fileのチャンネル数1なら、source_fileをにsource_file_monoに代入して処理を継続する
+if not os.path.exists(source_file_mono):
+    source_file_mono = source_file
 remove_silence(source_file_mono, no_silence_audio_file.name)
 
 #TODO:デバッグが必要。num_spekersが2かどうかは不明。
 #TODO:pipelineの進捗出せないか？フリーズしているのか、進んでいるのか、表示したい。
 logging.debug('パイプライン処理開始')
-#diarization = pipeline(no_silence_audio_file.name ,num_speakers=2)
-diarization = pipeline(no_silence_audio_file.name)
+diarization = pipeline(no_silence_audio_file.name ,num_speakers=2)
 
+'''
+#copilotに聞いて組み込んだこの処理は動作しない　20240806
+with tqdm(total=100, desc="Diarization") as pbar:    
+    diarization = pipeline(no_silence_audio_file.name)
+    pbar.update(100)
+'''
 logging.debug('オーディオ処理開始')
 
 audio = Audio(sample_rate=16000, mono=True)
